@@ -36,7 +36,6 @@ T = TypeVar('T')
 
 log = logging.getLogger('mkdocs.plugins')
 
-
 def get_plugins() -> dict[str, EntryPoint]:
     """Return a dict of all installed Plugins as {name: EntryPoint}."""
     plugins = entry_points(group='mkdocs.plugins')
@@ -50,7 +49,6 @@ def get_plugins() -> dict[str, EntryPoint]:
         pluginmap[plugin.name] = plugin
 
     return pluginmap
-
 
 SomeConfig = TypeVar('SomeConfig', bound=Config)
 
@@ -323,11 +321,9 @@ class BasePlugin(Generic[SomeConfig]):
         return page
 
     def on_page_read_source(self, /, *, page: Page, config: MkDocsConfig) -> str | None:
-        """
-        > DEPRECATED: Instead of this event, prefer one of these alternatives:
-        >
-        > * Since MkDocs 1.6, instead set `content_bytes`/`content_string` of a `File` inside [`on_files`][].
-        > * Usually (although it's not an exact alternative), `on_page_markdown` can serve the same purpose.
+        """DEPRECATED: Instead of this event, prefer one of these alternatives:
+        * Since MkDocs 1.6, instead set `content_bytes`/`content_string` of a `File` inside [`on_files`][].
+        * Usually (although it's not an exact alternative), `on_page_markdown` can serve the same purpose.
 
         The `on_page_read_source` event can replace the default mechanism to read
         the contents of a page's source from the filesystem.
@@ -438,16 +434,6 @@ def event_priority(priority: float) -> Callable[[T], T]:
     def on_files(self, files, config, **kwargs):
         ...
     ```
-
-    New in MkDocs 1.4.
-    Recommended shim for backwards compatibility:
-
-    ```python
-    try:
-        from mkdocs.plugins import event_priority
-    except ImportError:
-        event_priority = lambda priority: lambda f: f  # No-op fallback
-    ```
     """
 
     def decorator(event_method):
@@ -549,8 +535,7 @@ class PluginCollection(dict, MutableMapping[str, BasePlugin]):
         ...
 
     def run_event(self, name: str, item=None, **kwargs):
-        """
-        Run all registered methods of an event.
+        """Run all registered methods of an event.
 
         `item` is the object to be modified or replaced and returned by the event method.
         If it isn't given the event method creates a new object to be returned.
@@ -634,7 +619,9 @@ class PluginCollection(dict, MutableMapping[str, BasePlugin]):
     ) -> str:
         return self.run_event('page_markdown', markdown, page=page, config=config, files=files)
 
-    def on_page_content(self, html: str, *, page: Page, config: MkDocsConfig, files: Files) -> str:
+    def on_page_content(
+        self, html: str, *, page: Page, config: MkDocsConfig, files: Files
+    ) -> str:
         return self.run_event('page_content', html, page=page, config=config, files=files)
 
     def on_page_context(
@@ -650,8 +637,7 @@ class PrefixedLogger(logging.LoggerAdapter):
     """A logger adapter to prefix log messages."""
 
     def __init__(self, prefix: str, logger: logging.Logger) -> None:
-        """
-        Initialize the logger adapter.
+        """Initialize the logger adapter.
 
         Arguments:
             prefix: The string to insert in front of every message.
@@ -661,8 +647,7 @@ class PrefixedLogger(logging.LoggerAdapter):
         self.prefix = prefix
 
     def process(self, msg: str, kwargs: MutableMapping[str, Any]) -> tuple[str, Any]:
-        """
-        Process the message.
+        """Process the message.
 
         Arguments:
             msg: The message:
@@ -675,8 +660,7 @@ class PrefixedLogger(logging.LoggerAdapter):
 
 
 def get_plugin_logger(name: str) -> PrefixedLogger:
-    """
-    Return a logger for plugins.
+    """Return a logger for plugins.
 
     Arguments:
         name: The name to use with `logging.getLogger`.
@@ -695,3 +679,41 @@ def get_plugin_logger(name: str) -> PrefixedLogger:
     """
     logger = logging.getLogger(f"mkdocs.plugins.{name}")
     return PrefixedLogger(name.split(".", 1)[0], logger)
+
+
+# Modifying the edit_uri property to handle absolute URLs
+
+    def _set_edit_url(self, repo_url: str | None, edit_uri: str | None, edit_uri_template: str | None) -> None:
+        """Set the edit URL based on the provided parameters."""
+        if edit_uri is None and edit_uri_template is None:
+            self.edit_url = None
+            return
+
+        src_uri = self.file.edit_uri
+        if src_uri is None:
+            self.edit_url = None
+            return
+
+        if edit_uri_template is not None:
+            noext = posixpath.splitext(src_uri)[0]
+            file_edit_uri = edit_uri_template.format(path=src_uri, path_noext=noext)
+        elif edit_uri:
+            if edit_uri.startswith('http://') or edit_uri.startswith('https://'):
+                file_edit_uri = edit_uri
+            else:
+                file_edit_uri = f"{edit_uri}/{src_uri}"
+        else:
+            file_edit_uri = src_uri
+
+        if repo_url is not None:
+            if not file_edit_uri.startswith('?') and not file_edit_uri.startswith('#'):
+                if not repo_url.endswith('/'): 
+                    repo_url += '/'
+        else:
+            parsed_url = urlsplit(file_edit_uri)
+            if parsed_url.scheme is None or parsed_url.netloc is None:
+                log.warning(f"edit_uri: {file_edit_uri} is not a valid URL, it should include the http:// (scheme)")
+
+        self.edit_url = urljoin(repo_url or '', file_edit_uri)
+
+# End of modifications
