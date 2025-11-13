@@ -76,6 +76,8 @@ NOTE:
 The [`site_name`][site_name] configuration
 option is the only required option in your configuration file.
 
++ Additionally, ensure that your `index.md` file starts with a lowercase 'i' to avoid 404 errors.
+
 ## Adding pages
 
 Now add a second page to your documentation:
