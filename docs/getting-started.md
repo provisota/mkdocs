@@ -211,3 +211,6 @@ To get help with MkDocs, please use the [GitHub discussions] or [GitHub issues].
 [site_name]: user-guide/configuration.md#site_name
 [theme]: user-guide/configuration.md#theme
 [User Guide]: user-guide/README.md
+
+
+**Note:** Ensure that your `index.md` file starts with a lowercase 'i' to avoid 404 errors.
