@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Iterator, TypeVar
 from urllib.parse import urlsplit
+import os
 
 from mkdocs.exceptions import BuildError
 from mkdocs.structure import StructureItem
@@ -14,9 +15,7 @@ if TYPE_CHECKING:
     from mkdocs.config.defaults import MkDocsConfig
     from mkdocs.structure.files import Files
 
-
 log = logging.getLogger(__name__)
-
 
 class Navigation:
     def __init__(self, items: list, pages: list[Page]) -> None:
@@ -36,14 +35,14 @@ class Navigation:
     """A flat list of all [page][mkdocs.structure.pages.Page] objects contained in the navigation."""
 
     def __str__(self) -> str:
-        return '\n'.join(item._indent_print() for item in self)
+        return '
+'.join(item._indent_print() for item in self)
 
     def __iter__(self) -> Iterator:
         return iter(self.items)
 
     def __len__(self) -> int:
         return len(self.items)
-
 
 class Section(StructureItem):
     def __init__(self, title: str, children: list[StructureItem]) -> None:
@@ -91,8 +90,8 @@ class Section(StructureItem):
         ret = [super()._indent_print(depth)]
         for item in self.children:
             ret.append(item._indent_print(depth + 1))
-        return '\n'.join(ret)
-
+        return '
+'.join(ret)
 
 class Link(StructureItem):
     def __init__(self, title: str, url: str):
@@ -126,7 +125,6 @@ class Link(StructureItem):
     is_link: bool = True
     """Indicates that the navigation object is a "link" object. Always `True` for link objects."""
 
-
 def get_navigation(files: Files, config: MkDocsConfig) -> Navigation:
     """Build site navigation from config and files."""
     documentation_pages = files.documentation_pages()
@@ -134,6 +132,28 @@ def get_navigation(files: Files, config: MkDocsConfig) -> Navigation:
     if nav_config is None:
         documentation_pages = sorted(documentation_pages, key=file_sort_key)
         nav_config = nest_paths(f.src_uri for f in documentation_pages if f.inclusion.is_in_nav())
+
+    # Check for conflicting files in the source directory
+    conflicting_files = []
+    for file in documentation_pages:
+        if file.src_path.endswith("README.md"):
+            conflicting_path = os.path.join(os.path.dirname(file.abs_src_path), "index.html")
+            if os.path.exists(conflicting_path):
+                conflicting_files.append((file.src_path, conflicting_path))
+
+    if conflicting_files:
+        conflict_messages = "
+".join(
+            f"Conflict detected: {readme} and {index_html} in the same directory."
+            for readme, index_html in conflicting_files
+        )
+        raise BuildError(
+            f"Conflicting files detected in the source directory:
+{conflict_messages}
+"
+            "Please resolve the conflict by renaming or removing one of the files."
+        )
+
     items = _data_to_navigation(nav_config, files, config)
     if not isinstance(items, list):
         items = [items]
@@ -158,7 +178,9 @@ def get_navigation(files: Files, config: MkDocsConfig) -> Navigation:
         log.log(
             config.validation.nav.omitted_files,
             'The following pages exist in the docs directory, but are not '
-            'included in the "nav" configuration:\n  - ' + '\n  - '.join(missing_from_config),
+            'included in the "nav" configuration:
+  - ' + '
+  - '.join(missing_from_config),
         )
 
     links = _get_by_type(items, Link)
@@ -183,7 +205,6 @@ def get_navigation(files: Files, config: MkDocsConfig) -> Navigation:
                 "configuration, which is not found in the documentation files.",
             )
     return Navigation(items, pages)
-
 
 def _data_to_navigation(data, files: Files, config: MkDocsConfig):
     if isinstance(data, dict):
@@ -222,9 +243,7 @@ def _data_to_navigation(data, files: Files, config: MkDocsConfig):
         return Page(title, file, config)
     return Link(title, path)
 
-
 T = TypeVar('T')
-
 
 def _get_by_type(nav, t: type[T]) -> list[T]:
     ret = []
@@ -235,14 +254,12 @@ def _get_by_type(nav, t: type[T]) -> list[T]:
             ret.extend(_get_by_type(item.children, t))
     return ret
 
-
 def _add_parent_links(nav) -> None:
     for item in nav:
         if item.is_section:
             for child in item.children:
                 child.parent = item
             _add_parent_links(item.children)
-
 
 def _add_previous_and_next_links(pages: list[Page]) -> None:
     bookended = [None, *pages, None]
