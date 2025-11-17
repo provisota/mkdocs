@@ -73,6 +73,9 @@ class MkDocsConfig(base.Config):
     theme = c.Theme(default='mkdocs')
     """The MkDocs theme for the documentation."""
 
+    navigation_smart_section_titles = c.Type(bool, default=False)
+    """Enable or disable smart section titles for sub-directories."""
+
     docs_dir = c.DocsDir(default='docs', exists=True)
     """The directory containing the documentation markdown."""
 
@@ -201,6 +204,12 @@ class MkDocsConfig(base.Config):
     _current_page: Page | None = None
     """The currently rendered page. Please do not access this and instead
     rely on the `page` argument to event handlers."""
+
+    def determine_section_title(self, page: Page) -> str:
+        """Determine the section title based on the configuration."""
+        if self.navigation_smart_section_titles and page.meta.get('title'):
+            return page.meta['title']
+        return page.title
 
     def load_dict(self, patch: dict) -> None:
         super().load_dict(patch)
