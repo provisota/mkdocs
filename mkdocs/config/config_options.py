@@ -424,7 +424,7 @@ class Deprecated(BaseConfigOption):
         if config.get(key_name) is not None:
             if self.removed:
                 raise ValidationError(self.message.format(key_name))
-            self.warnings.append(self.message.format(key_name))
+            log.info(self.message.format(key_name))
 
             if self.moved_to is not None:
                 *parent_keys, target_key = self.moved_to.split('.')
